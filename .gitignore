@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Environments
+.env
+.venv
+conda-env/
+environment/
+
+# Large data
+data/WiNER-fr/
+data/MEDIA/
+
+# Results & logs (keep if you want reproducibility)
+logs/
+results/
+
+# OS
+.DS_Store
