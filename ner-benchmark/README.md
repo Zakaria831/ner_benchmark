@@ -188,12 +188,12 @@ We report:
 
 | Label | Best Model | Precision | Recall | F1 | Gold Support |
 |---|---|---:|---:|---:|---:|
-| Date | gliner | 0.862 | 0.467 | 0.606 | 3817 |
-| Event | gliner | 0.275 | 0.537 | 0.364 | 751 |
+| Date | gliner | 0.800 | 0.094 | 0.167 | 3817 |
+| Event | gliner | 0.382 | 0.174 | 0.239 | 751 |
 | Hour | RULES | 0.883 | 0.662 | 0.757 | 945 |
-| Location | gliner | 0.881 | 0.544 | 0.673 | 8720 |
-| Organization | gliner | 0.533 | 0.580 | 0.556 | 4218 |
-| Person | glinerr | 0.802 | 0.623 | 0.701 | 5057 |
+| Location | stanza | 0.847 | 0.309 | 0.452 | 8720 |
+| Organization | stanza | 0.682 | 0.214 | 0.326 | 4218 |
+| Person | bert-base-multilingual-cased-ner | 0.929 | 0.188 | 0.313 | 5057 |
 | Product | camembert_ft | 0.359 | 0.209 | 0.264 | 674 |
 
 ---
