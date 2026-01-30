@@ -4,16 +4,14 @@ import argparse
 import json
 import time
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 import torch
-import flair
-from flair.models import SequenceTagger
-from flair.splitter import SegtokSentenceSplitter
 
 from load_winer import load_winer
 
 Entity = Tuple[int, int, str]
+WINER_TARGET_LABELS = ["Person", "Location", "Organization", "Date", "Event", "Product", "Hour"]
 
 
 def _ensure_outdir(p: Path) -> None:
@@ -54,66 +52,14 @@ def _unique_sorted(entities: List[Entity]) -> List[Entity]:
     return sorted(set(entities), key=lambda x: (x[0], x[1], x[2]))
 
 
-def _to_winer_label(raw: str) -> Optional[str]:
-    up = str(raw).strip().upper()
-    if not up:
-        return None
-    if up in ("PER", "PERSON"):
-        return "Person"
-    if up in ("LOC", "LOCATION", "GPE"):
-        return "Location"
-    if up in ("ORG", "ORGANIZATION"):
-        return "Organization"
-    if up == "DATE":
-        return "Date"
-    if up in ("TIME", "HOUR"):
-        return "Hour"
-    if up == "EVENT":
-        return "Event"
-    if up == "PRODUCT":
-        return "Product"
-    if up == "MISC":
-        return None
-    return None
-
-
-def predict_flair_doc(
-    text: str,
-    tagger: SequenceTagger,
-    splitter: SegtokSentenceSplitter,
-    batch_size: int,
-) -> List[Entity]:
-    sentences = splitter.split(text)
-    if not sentences:
-        return []
-
-    tagger.predict(sentences, mini_batch_size=batch_size, verbose=False)
-
-    ents: List[Entity] = []
-    for sent in sentences:
-        base = getattr(sent, "start_position", 0) or 0
-        for span in sent.get_spans("ner"):
-            raw = span.get_label("ner").value
-            lab = _to_winer_label(raw)
-            if lab is None:
-                continue
-
-            start = base + span.start_position
-            end = base + span.end_position
-            if end > start:
-                ents.append((start, end, lab))
-
-    return _unique_sorted(ents)
-
-
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--winer_root", type=str, required=True)
-    ap.add_argument("--model", type=str, default="flair/ner-french")
+    ap.add_argument("--model", type=str, default="urchade/gliner_multi-v2.1")
     ap.add_argument("--out", type=str, default="")
-    ap.add_argument("--batch_size", type=int, default=16)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--force_cpu", action="store_true")
+    ap.add_argument("--threshold", type=float, default=0.30)
     ap.add_argument("--ids_file", type=str, default="")
     args = ap.parse_args()
 
@@ -126,34 +72,58 @@ def main() -> None:
     if not docs:
         raise SystemExit("No documents found (after filtering). Check --winer_root/--ids_file.")
 
-    device = torch.device("cpu")
+    device = "cpu"
     if (not args.force_cpu) and torch.cuda.is_available():
-        device = torch.device("cuda:0")
-    flair.device = device
+        device = "cuda"
 
-    tagger: SequenceTagger = SequenceTagger.load(args.model)
-    splitter = SegtokSentenceSplitter()
+    # GLiNER import (package name depends on install)
+    try:
+        from gliner import GLiNER
+    except Exception as e:
+        raise SystemExit(
+            "GLiNER not installed. Try: pip install gliner\n"
+            f"Import error: {e}"
+        )
 
-    out_path = Path(args.out) if args.out else Path(f"results/predictions/flair_{args.model.replace('/', '_')}_winer.jsonl")
+    model = GLiNER.from_pretrained(args.model)
+    model.to(device)
+
+    out_path = Path(args.out) if args.out else Path(f"results/gliner_{args.model.replace('/', '_')}_winer.jsonl")
 
     rows: List[dict] = []
     t_all0 = time.perf_counter()
 
     for d in docs:
         t0 = time.perf_counter()
-        ents = predict_flair_doc(d["text"], tagger, splitter, args.batch_size)
+
+        preds = model.predict_entities(
+            d["text"],
+            labels=WINER_TARGET_LABELS,
+            threshold=args.threshold,
+        )
+        ents: List[Entity] = []
+        for p in preds:
+            s = int(p.get("start", -1))
+            e = int(p.get("end", -1))
+            lab = str(p.get("label", "")).strip()
+            if s >= 0 and e > s and lab:
+                ents.append((s, e, lab))
+
+        ents = _unique_sorted(ents)
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
-        rows.append({"doc_id": d["doc_id"], "model": f"flair_{args.model}", "entities": ents, "elapsed_ms": round(elapsed_ms, 3)})
+
+        rows.append(
+            {"doc_id": d["doc_id"], "model": args.model, "entities": ents, "elapsed_ms": round(elapsed_ms, 3)}
+        )
 
     total_ms = (time.perf_counter() - t_all0) * 1000.0
     _write_jsonl(out_path, rows)
 
-    avg_ms = total_ms / max(1, len(rows))
     print(f"Device: {device}")
     print(f"Model:  {args.model}")
     print(f"Docs:   {len(rows)}")
     print(f"Out:    {out_path}")
-    print(f"Total:  {total_ms:.2f} ms | Avg: {avg_ms:.2f} ms/doc")
+    print(f"Total:  {total_ms:.2f} ms | Avg: {total_ms / max(1,len(rows)):.2f} ms/doc")
 
 
 if __name__ == "__main__":

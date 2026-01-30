@@ -4,20 +4,52 @@ __pycache__/
 *.pyo
 *.pyd
 *.egg-info/
+*.egg
+*.whl
+build/
+dist/
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
 
 # Environments
 .env
 .venv
 conda-env/
 environment/
+env/
+venv/
+.python-version
 
 # Large data
 data/WiNER-fr/
 data/MEDIA/
+data_hf/
+models/
+wandb/
 
 # Results & logs (keep if you want reproducibility)
 logs/
-results/
+*.log
+*.out
+*.err
+slurm-*.out
+slurm-*.err
+
+# Training checkpoints
+**/checkpoint-*/
+**/best_model/
 
 # OS
 .DS_Store

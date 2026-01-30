@@ -1,196 +1,216 @@
-# French Named Entity Recognition Benchmark (WiNER)
+# French NER Benchmark on WiNER
 
-This repository implements a **comparative benchmark of Named Entity Recognition (NER) methods for French**, evaluated on the **WiNER (Wikinews for Named Entity Recognition)** corpus.
-
-The benchmark focuses on **off-the-shelf models and tools** and aims to analyze **which methods perform best for which entity types**, with both **research and industrial perspectives**.
+This repository benchmarks **French Named Entity Recognition (NER)** models on **WiNER** (Wikinews for NER), using **entity-level exact match** evaluation. It compares **off‑the‑shelf** tools (spaCy, Flair, Stanza, HF models, GLiNER) and **custom fine‑tuned CamemBERT** variants.
 
 ---
 
-## Objectives
+## Goals
 
-- Benchmark multiple **NER paradigms** on a common French dataset
-- Compare models using **entity-level exact match evaluation**
-- Analyze **per-entity-type performance**
-- Study **model biases, coverage, and limitations**
-- Provide insights relevant for **industrial NLP applications** (e.g. information extraction, voice-bots)
-
----
-
-## Dataset
-
-### WiNER (Wikinews for Named Entity Recognition)
-
-- **Language:** French  
-- **Domain:** News (Wikinews)  
-- **Annotation format:** BRAT (`.txt` + `.ann`)  
-- **Special feature:** Supports **nested named entities**
-
-### Entity Types in WiNER
-
-- `Person`
-- `Location`
-- `Organization`
-- `Date`
-- `Event`
-- `Product`
-- `Hour`
-
-Dataset location: data/WiNER-fr/
-
+- Compare multiple NER paradigms on a single French dataset
+- Report **micro** and **macro** precision/recall/F1
+- Analyze **per‑entity‑type** performance
+- Inspect nested entity behavior (WiNER supports nesting)
 
 ---
 
-##  Evaluated Methods
+## Dataset (WiNER)
 
-### 1️ spaCy (Industrial NLP Pipeline)
+- **Language:** French
+- **Domain:** Wikinews
+- **Format:** BRAT (`.txt` + `.ann`)
+- **Labels:** Person, Location, Organization, Date, Event, Product, Hour
 
-Models:
-- `fr_core_news_sm`
-- `fr_core_news_md` (or `lg`)
-
-Characteristics:
-- CNN-based architecture
-- Fast inference
-- Widely used in production systems
+Dataset location: `data/WiNER-fr/`
 
 ---
 
-### 2️ Hugging Face Transformers (NER Fine-Tuned)
+## Project Structure
 
-Models:
-- `Jean-Baptiste/camembert-ner` (French-specific transformer)
-- `cmarkea/distilcamembert-base-ner` (lightweight French transformer)
-- `Davlan/bert-base-multilingual-cased-ner-hrl` (multilingual baseline)
-
-Characteristics:
-- Transformer-based models
-- High accuracy
-- Higher computational cost
-
----
-
-### 3️ Flair
-
-Model:
-- `flair/ner-french`
-
-Characteristics:
-- BiLSTM + CRF architecture
-- Strong pre-transformer baseline
-- Sentence-level sequence tagging
-
----
-
-### 4️ Rule-Based Baseline (DATE / HOUR)
-
-Method:
-- Regular-expression-based extraction
-
-Target entities:
-- `Date`
-- `Hour`
-
-Purpose:
-- Provide a **lower-bound baseline**
-- Highlight strengths and limitations of rule-based systems
-- Compare specialist rules vs statistical models
-
----
-
-
-## 🗂 Project Structure
-
+```
 ner_benchmark/
-│
-├── README.md
-│
-├── data/
-│ └── WiNER-fr/
-│
-├── src/
-│ ├── load_winer.py
-│ ├── run_spacy.py
-│ ├── run_hf.py
-│ ├── run_flair.py
-│ ├── run_rules.py
-│ ├── evaluate.py
-│ └── utils.py
-│
-├── scripts/
-│ ├── run_spacy_.sh
-│ ├── run_hf_.sh
-│ ├── run_flair_.sh
-│ └── run_rules_.sh
-│
+├── data/                 # WiNER BRAT data
+├── data_hf/              # HF datasets for training
+├── logs/                 # SLURM logs
+├── models/               # Trained models
 ├── results/
-│ ├── predictions/
-│ └── eval/
-
-
-
----
-
-## Inference Scripts (`src/`)
-
-| Script | Description |
-|------|-------------|
-| `load_winer.py` | Load WiNER BRAT annotations |
-| `run_spacy.py` | Run spaCy NER models |
-| `run_hf.py` | Run Hugging Face NER models |
-| `run_flair.py` | Run Flair NER |
-| `run_rules.py` | Rule-based DATE/HOUR extraction |
-| `evaluate.py` | Evaluation and analysis |
+│   ├── predictions/      # JSONL predictions
+│   └── eval/             # CSV evaluation outputs
+├── scripts/              # SLURM job scripts
+├── splits/               # Train/dev/test splits
+└── src/                  # Python pipeline
+```
 
 ---
 
-##  Evaluation Protocol
+## Setup
 
-### ✔ Core Metrics (Entity-Level Exact Match)
+Recommended packages:
 
-- **Precision**
-- **Recall**
-- **F1-score**
+- `torch`, `transformers`, `datasets`, `seqeval`
+- `spacy`, `flair`, `stanza`, `gliner`
+- `pandas`, `numpy`
 
-A prediction is considered correct **only if**:
-- Start offset matches
-- End offset matches
-- Entity label matches
+> Models are downloaded automatically by each framework (HF, spaCy, Flair, Stanza, GLiNER).
 
 ---
 
-### ✔ Averaging Schemes
+## Quickstart (Inference + Evaluation)
 
-- **Micro-average**
-  - Aggregates all entities
-  - Dominated by frequent classes
-- **Macro-average**
-  - Average across entity types
-  - Highlights performance on rare entities
+1) **Run a model** (example HF CamemBERT):
+
+```bash
+python src/run_hf.py \
+  --winer_root data/WiNER-fr \
+  --model Jean-Baptiste/camembert-ner \
+  --max_length 512 \
+  --stride 128 \
+  --ids_file splits/test_ids.txt
+```
+
+2) **Evaluate all predictions** in a folder:
+
+```bash
+python src/evaluate_winer.py \
+  --winer_root data/WiNER-fr \
+  --pred_dir results/predictions \
+  --out_dir results/eval
+```
+
+Outputs:
+- `results/eval/summary_models.csv`
+- `results/eval/per_label_metrics.csv`
+- `results/eval/best_model_per_label.csv`
 
 ---
 
-### ✔ Per-Entity-Type Evaluation
+## Scripts (SLURM)
 
-Metrics computed independently for each entity type:
+The `scripts/` folder contains ready-to-run SLURM jobs for:
 
-- Person
-- Location
-- Organization
-- Date
-- Event
-- Product
-- Hour
-
-This analysis allows:
-- Identification of **easy vs hard entities**
-- Detection of **model biases**
+- spaCy (`run_spacy_sm.sh`, `run_spacy_md.sh`)
+- HF baselines (`run_hf_camembert.sh`, `run_hf_distilcamembert.sh`, `run_bert-base-multilingual-cased-ner.sh`)
+- Flair (`run_flair.sh`)
+- GLiNER (`run_gliner.sh`)
+- Stanza (`run_stanza.sh`)
+- Rules (`run_rules_winer.sh`)
+- Training (`train_camembert_large_winer.sh`, `train_distilcamembert_winer.sh`, `train_camembert.sh`)
 
 ---
 
-### ✔ Nested Entity Analysis (WiNER-Specific)
+## Training Pipeline (HF Fine‑Tuning)
 
-- Proportion of nested entities in gold annotations
-- Exact-match detection rate for nested entities
-- Prediction overlap rate (proxy for nesting support)
+1) **Create deterministic splits**
 
-> Most NER tools output **flat entities** and do not explicitly support nesting.
+```bash
+python src/make_splits_winer.py \
+  --winer_root data/WiNER-fr \
+  --out_dir splits \
+  --train_years 2016,2017 \
+  --test_years 2018 \
+  --dev_ratio 0.10
+```
+
+2) **Build HF dataset (tokenized windows)**
+
+```bash
+python src/build_hf_dataset_winer.py \
+  --splits_json splits/winer_splits.json \
+  --model_name almanach/camembert-large \
+  --out_dir data_hf/winer_camembert_large_priority \
+  --max_length 512 \
+  --stride 128
+```
+
+3) **Train**
+
+```bash
+python src/train_hf_winer_ner.py \
+  --base_model almanach/camembert-large \
+  --dataset_dir data_hf/winer_camembert_large_priority/dataset \
+  --label2id data_hf/winer_camembert_large_priority/label2id.json \
+  --id2label data_hf/winer_camembert_large_priority/id2label.json \
+  --output_dir models/camembert_large_priority \
+  --epochs 20 \
+  --lr 2e-5 \
+  --train_batch 2 \
+  --eval_batch 2 \
+  --grad_accum 8 \
+  --fp16 \
+  --best_metric eval_loss \
+  --use_class_weights
+```
+
+4) **Predict with trained model (test set)**
+
+```bash
+python src/run_hf_trained.py \
+  --dataset_dir data_hf/winer_camembert_large_priority/dataset \
+  --winer_root data/WiNER-fr \
+  --model_dir models/camembert_large_priority/best_model \
+  --out_jsonl results/predictions/hf_camembert_large_priority_ft_TEST.jsonl
+```
+
+---
+
+## Evaluation Protocol
+
+**Entity-level exact match**: a prediction is correct only if **start**, **end**, and **label** all match.
+
+We report:
+
+- **Micro** precision/recall/F1 (global)
+- **Macro** precision/recall/F1 (per label average)
+- **Per‑label** results
+- **Nested entity analysis** (WiNER supports nested entities)
+
+---
+
+## Results (from `results/eval`)
+
+### Overall metrics by model
+
+| Model | Micro P | Micro R | Micro F1 | Macro P | Macro R | Macro F1 |
+|---|---:|---:|---:|---:|---:|---:|
+| flair | 0.792 | 0.167 | 0.276 | 0.341 | 0.089 | 0.140 |
+| gliner | 0.719 | 0.114 | 0.197 | 0.646 | 0.113 | 0.186 |
+| bert-base-multilingual-cased-ner | 0.803 | 0.161 | 0.269 | 0.335 | 0.086 | 0.137 |
+| camembert-ner | 0.104 | 0.025 | 0.040 | 0.035 | 0.012 | 0.018 |
+| camembert_large_ft | 0.057 | 0.022 | 0.032 | 0.031 | 0.012 | 0.017 |
+| camembert_ft | 0.271 | 0.152 | 0.195 | 0.261 | 0.174 | 0.205 |
+| distilcamembert-base-ner | 0.103 | 0.023 | 0.038 | 0.035 | 0.011 | 0.017 |
+| distilcamembert_ft | 0.033 | 0.013 | 0.019 | 0.019 | 0.008 | 0.010 |
+| RULES | 0.620 | 0.039 | 0.074 | 0.183 | 0.107 | 0.128 |
+| spacy_md | 0.770 | 0.164 | 0.271 | 0.324 | 0.086 | 0.133 |
+| spacy_sm | 0.686 | 0.156 | 0.254 | 0.275 | 0.080 | 0.122 |
+| stanza | 0.813 | 0.188 | 0.305 | 0.343 | 0.102 | 0.155 |
+
+### Best model per label
+
+| Label | Best Model | Precision | Recall | F1 | Gold Support |
+|---|---|---:|---:|---:|---:|
+| Date | gliner | 0.862 | 0.467 | 0.606 | 3817 |
+| Event | gliner | 0.275 | 0.537 | 0.364 | 751 |
+| Hour | RULES | 0.883 | 0.662 | 0.757 | 945 |
+| Location | gliner | 0.881 | 0.544 | 0.673 | 8720 |
+| Organization | gliner | 0.533 | 0.580 | 0.556 | 4218 |
+| Person | glinerr | 0.802 | 0.623 | 0.701 | 5057 |
+| Product | camembert_ft | 0.359 | 0.209 | 0.264 | 674 |
+
+---
+
+## Training Curves (placeholders)
+
+> Replace the paths with your images.
+
+![Train loss](images/train_loss.png)
+![Eval loss](images/eval_loss.png)
+![Eval precision](images/eval_precision.png)
+![Eval recall](images/eval_recall.png)
+![Eval F1](images/eval_f1.png)
+
+---
+
+## Notes
+
+- WiNER contains **nested entities**; most tools output **flat** spans.
+- Evaluation is **strict exact match** on spans + labels.

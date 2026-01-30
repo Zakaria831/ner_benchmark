@@ -3,9 +3,9 @@
 #SBATCH --output=logs/hf_bert-base-multilingual-cased-ner_winer_%j.log
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
-#SBATCH --nodelist=gpue05
-#SBATCH --mem=40G
-#SBATCH --cpus-per-task=12
+#SBATCH --nodelist=gpue02
+#SBATCH --mem=10G
+#SBATCH --cpus-per-task=10
 #SBATCH --time=08:00:00
 
 set -e
@@ -22,7 +22,7 @@ which python
 python -V
 
 
-PROJECT_ROOT="/info/etu/m2/s2506967/Covea_project/NER-Project" 
+PROJECT_ROOT="/info/etu/m2/s2506967/Covea_project/ner_benchmark" 
 export PYTHONPATH="$PROJECT_ROOT/src:$PYTHONPATH"
 
 
@@ -32,6 +32,7 @@ python "$PROJECT_ROOT/src/run_hf.py" \
   --winer_root "$PROJECT_ROOT/data/WiNER-fr" \
   --model Davlan/bert-base-multilingual-cased-ner-hrl \
   --max_length 512 \
-  --stride 128
+  --stride 128 \
+  --ids_file splits/test_ids.txt
 
 echo "=== Job finished at $(date) ==="
