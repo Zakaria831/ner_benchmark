@@ -198,9 +198,7 @@ We report:
 
 ---
 
-## Training Curves (placeholders)
-
-> Replace the paths with your images.
+## Training Curves
 
 ![Train loss](images/train_loss.png)
 ![Eval loss](images/eval_loss.png)
