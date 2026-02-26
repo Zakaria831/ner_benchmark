@@ -16,6 +16,8 @@ dist/
 .coverage
 coverage.xml
 htmlcov/
+scripts/
+splits/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -34,10 +36,20 @@ venv/
 
 # Large data
 data/WiNER-fr/
+WiNER-fr/
 data/MEDIA/
 data_hf/
 models/
 wandb/
+
+# Local data & notebooks (do not push)
+WiNER-fr/
+splits/
+whisper_french_finetuning.ipynb
+covea_speech_evaluation_azure_gladia.ipynb
+
+covea_speech_evaluation_azure_gladia.ipynb
+whisper_french_finetuning.ipynb
 
 # Results & logs (keep if you want reproducibility)
 logs/
