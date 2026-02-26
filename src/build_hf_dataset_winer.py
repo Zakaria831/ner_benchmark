@@ -1,3 +1,4 @@
+# build_hf_dataset_winer.py
 from __future__ import annotations
 
 import argparse
@@ -22,7 +23,6 @@ PRIORITY = {
     "Event": 2,
     "Product": 1,
 }
-
 
 def load_brat(txt_path: Path, ann_path: Path) -> Tuple[str, List[Entity]]:
     text = txt_path.read_text(encoding="utf-8")
